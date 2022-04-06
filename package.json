@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/mpereiraesaa/profit-maker-vault/issues"
   },
-  "homepage": "https://github.com/mpereiraesaa/profit-maker-vault#readme"
+  "homepage": "https://github.com/mpereiraesaa/profit-maker-vault#readme",
+  "devDependencies": {
+    "@openzeppelin/contracts": "^4.5.0"
+  }
 }
