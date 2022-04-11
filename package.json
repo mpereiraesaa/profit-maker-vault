@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "ganache-fork": "ganache-cli --fork https://speedy-nodes-nyc.moralis.io/f710b1c8ce744f153dbed5a8/eth/mainnet -u '0xb527a981e1d415AF696936B3174f2d7aC8D11369' -e 1000",
+    "test": "truffle test --network mainnetfork",
+    "debug-test": "truffle test --debug --network mainnetfork"
   },
   "repository": {
     "type": "git",
@@ -22,6 +24,8 @@
   },
   "homepage": "https://github.com/mpereiraesaa/profit-maker-vault#readme",
   "devDependencies": {
-    "@openzeppelin/contracts": "^4.5.0"
+    "@openzeppelin/contracts": "^4.5.0",
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0"
   }
 }
