@@ -39,43 +39,32 @@ contract Vault is ERC20, Ownable {
     return _strategy.underlyingUnit();
   }
 
-  function deposit(uint256 underlyingAmount) public returns (uint256) {
-    address caller = _msgSender();
+  function deposit(uint256 amount) public returns (uint256) {
     IERC20 _asset = asset();
-    uint256 bal = _asset.balanceOf(caller);
-    uint256 amount = bal >= underlyingAmount ? underlyingAmount : bal;
-
-    require(amount > 0, "fail: cannot deposit 0");
 
     // if asset is ERC777, transferFrom can call reenter BEFORE the transfer happens through
     // the tokensToSend hook, so we need to transfer before we mint to keep the invariants.
-    SafeERC20.safeTransferFrom(_asset, caller, address(_strategy), amount);
+    SafeERC20.safeTransferFrom(_asset, msg.sender, address(_strategy), amount);
 
     uint256 mintAmount = amount.mul(underlyingUnit()).div(exchangeRate());
-    _mint(caller, mintAmount);
+    _mint(msg.sender, mintAmount);
 
     _strategy.invest();
 
-    emit Deposit(caller, underlyingAmount, mintAmount);
+    emit Deposit(msg.sender, amount, mintAmount);
     return mintAmount;
   }
 
   function withdraw(uint256 lpAmount) public {
-    address caller = _msgSender();
-    uint256 bal = balanceOf(caller);
-    uint256 amount = bal >= lpAmount ? lpAmount : bal;
-
-    require(amount > 0, "fail: cannot withdraw 0");
-
-    uint256 curveLpAmount = amount.mul(exchangeRate()).div(underlyingUnit());
+    uint256 curveLpAmount = lpAmount.mul(exchangeRate()).div(underlyingUnit());
 
     // if _asset is ERC777, transfer can call reenter AFTER the transfer happens through
     // the tokensReceived hook, so we need to transfer after we burn to keep the invariants.
-    _burn(caller, amount);
+    _burn(msg.sender, lpAmount);
 
-    _strategy.withdrawInvestment(curveLpAmount, caller);
+    _strategy.withdrawInvestment(curveLpAmount, msg.sender);
 
-    emit Withdraw(caller, curveLpAmount, amount);
+    emit Withdraw(msg.sender, curveLpAmount, lpAmount);
   }
 
   /** claims the accumulated CRV rewards from Curve and converts them to DAI */
@@ -105,10 +94,12 @@ contract Vault is ERC20, Ownable {
     path[0] = address(crvToken);
     path[1] = address(_asset);
 
+    uint256 minAmount = _uniswapRouter.getAmountsOut(crvAmount, path)[1];
+
     SafeERC20.safeIncreaseAllowance(crvToken, address(_uniswapRouter), crvAmount);
     _uniswapRouter.swapExactTokensForTokens(
       crvAmount,
-      0,
+      minAmount,
       path,
       address(this),
       block.timestamp

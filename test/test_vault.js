@@ -1,28 +1,25 @@
-const { time, expectRevert, constants } = require("@openzeppelin/test-helpers");
+const { expectRevert, constants } = require("@openzeppelin/test-helpers");
 
 const Vault = artifacts.require("Vault");
 const IERC20 = artifacts.require("IERC20");
-const DAI_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
-const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-const USDT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+const { advanceNBlock } = require('./helpers/utils');
+const { mainnet: {
+  DAI: DAI_ADDRESS,
+  USDC: USDC_ADDRESS,
+  USDT: USDT_ADDRESS
+} } = require("./data/addresses.json");
 
-const DAI_USER_ADDRESS = '0xb527a981e1d415AF696936B3174f2d7aC8D11369';
-
-async function advanceNBlock(n) {
-  let startingBlock = await time.latestBlock();
-  await time.increase(15 * Math.round(n));
-  let endBlock = startingBlock.addn(n);
-  await time.advanceBlockTo(endBlock);
-}
+const DAI_HOLDER_ADDRESS = '0xb527a981e1d415AF696936B3174f2d7aC8D11369';
+const BASE_AMOUNT = web3.utils.toBN(100*1e18);
 
 contract('Vault admin', (accounts) => {
   let vaultInstance = null;
   before(async () => {
     vaultInstance = await Vault.deployed();
   });
-  it('Only owner can set a new strategy in vault', async () => {
+  it('Only the owner can set a new strategy in vault', async () => {
     await expectRevert(
-      vaultInstance.setStrategy(constants.ZERO_ADDRESS, { from: DAI_USER_ADDRESS }),
+      vaultInstance.setStrategy(constants.ZERO_ADDRESS, { from: DAI_HOLDER_ADDRESS }),
       'Ownable: caller is not the owner'
     );
     await vaultInstance.setStrategy(constants.ZERO_ADDRESS, { from: accounts[0] });
@@ -43,34 +40,29 @@ contract('Vault basic functionality', (accounts) => {
     USDT = await IERC20.at(USDT_ADDRESS);
   });
   it('user can deposit DAI and mint lp tokens', async () => {
-    const amount = web3.utils.toBN(100*1e18);
-    await DAI.approve(vaultInstance.address, amount, { from: DAI_USER_ADDRESS});
-    await vaultInstance.deposit(amount, { from: DAI_USER_ADDRESS });
-    const lpTokens = await vaultInstance.balanceOf(DAI_USER_ADDRESS);
+    await DAI.approve(vaultInstance.address, BASE_AMOUNT, { from: DAI_HOLDER_ADDRESS});
+    await vaultInstance.deposit(BASE_AMOUNT, { from: DAI_HOLDER_ADDRESS });
+    const lpTokens = await vaultInstance.balanceOf(DAI_HOLDER_ADDRESS);
     assert.equal(lpTokens.toString() / 1e18, 100);
   });
   it('deposit should fail as DAI balance is zero', async () => {
-    const amount = web3.utils.toBN(100*1e18);
-    await DAI.approve(vaultInstance.address, amount, { from: accounts[0]});
-    await expectRevert(vaultInstance.deposit(amount, { from: accounts[0] }), "fail: cannot deposit 0");
+    await DAI.approve(vaultInstance.address, BASE_AMOUNT, { from: accounts[0]});
+    await expectRevert(vaultInstance.deposit(BASE_AMOUNT, { from: accounts[0] }), "Dai/insufficient-balance.");
   });
   it('withdraw should fail as LP balance is zero', async () => {
-    const amount = web3.utils.toBN(100*1e18);
-    await expectRevert(vaultInstance.withdraw(amount, { from: accounts[0] }), "fail: cannot withdraw 0");
+    await expectRevert(vaultInstance.withdraw(BASE_AMOUNT, { from: accounts[0] }), "ERC20: burn amount exceeds balance");
   });
   it('vault should deposit funds into curve protocol', async () => {
-    const amount = web3.utils.toBN(100*1e18);
-    await DAI.approve(vaultInstance.address, amount, { from: DAI_USER_ADDRESS});
+    await DAI.approve(vaultInstance.address, BASE_AMOUNT, { from: DAI_HOLDER_ADDRESS});
     const initialInvestedAmount = await vaultInstance.investedBalance();
-    await vaultInstance.deposit(amount, { from: DAI_USER_ADDRESS });
+    await vaultInstance.deposit(BASE_AMOUNT, { from: DAI_HOLDER_ADDRESS });
     const investedBalance = await vaultInstance.investedBalance();
     assert(investedBalance.toString() / 1e18 > initialInvestedAmount.toString() / 1e18);
   });
   it('user can transfer lp tokens', async () => {
-    const amount = await vaultInstance.balanceOf(DAI_USER_ADDRESS);
-    await vaultInstance.transfer(accounts[0], amount, { from: DAI_USER_ADDRESS });
+    await vaultInstance.transfer(accounts[0], BASE_AMOUNT, { from: DAI_HOLDER_ADDRESS });
     const balance = await vaultInstance.balanceOf(accounts[0]);
-    assert.equal(balance.toString(), amount.toString());
+    assert.equal(balance.toString(), BASE_AMOUNT.toString());
   });
   it('user can withdraw/redeem LP tokens and receive underlying tokens', async () => {
     const lpTokens = await vaultInstance.balanceOf(accounts[0]);
@@ -95,20 +87,15 @@ contract('Vault basic functionality', (accounts) => {
 contract('Vault rewards', async (accounts) => {
   let vaultInstance = null;
   let DAI = null;
-  let USDC = null;
-  let USDT = null;
   before(async () => {
     vaultInstance = await Vault.deployed();
     DAI = await IERC20.at(DAI_ADDRESS);
-    USDC = await IERC20.at(USDC_ADDRESS);
-    USDT = await IERC20.at(USDT_ADDRESS);
   });
   it('Vault should harvest and increase exchangeRate', async () => {
-    const amount = web3.utils.toBN(100*1e18);
-    await DAI.transfer(accounts[1], amount, {from: DAI_USER_ADDRESS});
+    await DAI.transfer(accounts[1], BASE_AMOUNT, {from: DAI_HOLDER_ADDRESS});
 
-    await DAI.approve(vaultInstance.address, amount, { from: accounts[1]});
-    await vaultInstance.deposit(amount, { from: accounts[1] });
+    await DAI.approve(vaultInstance.address, BASE_AMOUNT, { from: accounts[1]});
+    await vaultInstance.deposit(BASE_AMOUNT, { from: accounts[1] });
 
     const blocksPerHour = 240;
 
