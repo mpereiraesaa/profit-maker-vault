@@ -7,6 +7,9 @@ scripts, tests, and the Curve 3pool investment logic coded as a single strategy 
 I am using Truffle framework and local ganache to make an Ethereum mainnet fork, this makes possible to test and
 interact with the deployed Curve.finance protocol in a experience likely similar to live mainnet.
 
+## TODO
+Implement more unit tests without forked network.
+
 ## Requirements
 
 To run the project you need:
