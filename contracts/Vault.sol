@@ -94,6 +94,7 @@ contract Vault is ERC20, Ownable {
     path[0] = address(crvToken);
     path[1] = address(_asset);
 
+    // We have to replace this with a proper oracle
     uint256 minAmount = _uniswapRouter.getAmountsOut(crvAmount, path)[1];
 
     SafeERC20.safeIncreaseAllowance(crvToken, address(_uniswapRouter), crvAmount);
