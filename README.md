@@ -6,6 +6,9 @@ scripts, tests, and the Curve 3pool investment logic coded as a single strategy 
 
 I am using Truffle framework and there are integration tests that are using ganache fork feature to test real interactions with already deployed protocols and some unit tests for local validation.
 
+## TODO
+Implement more unit tests without forked network.
+
 ## Requirements
 
 To run the project you need:
