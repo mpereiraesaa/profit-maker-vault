@@ -5,9 +5,6 @@ module.exports = {
   // See details at: https://trufflesuite.com/docs/truffle/reference/configuration
   // on how to specify configuration options!
   //
-  etherscan: {
-    apikey: "9EFXPN3ATBA24EQ3MGYDTVCESMJAQYPWEB",
-  },
   compilers: {
     solc: {
       version: "^0.8.1"
@@ -17,11 +14,11 @@ module.exports = {
    development: {
      host: "127.0.0.1",
      port: 7545,
-     network_id: "*"
+     network_id: 1347
    },
-   mainnetfork: {
+   mainnet_fork: {
     host: "127.0.0.1",
-    port: 8545,
+    port: 7545,
     network_id: 1
   },
   //  test: {

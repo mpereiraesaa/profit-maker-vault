@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "ganache-fork": "ganache-cli --fork https://speedy-nodes-nyc.moralis.io/f710b1c8ce744f153dbed5a8/eth/mainnet -u '0xb527a981e1d415AF696936B3174f2d7aC8D11369' -e 1000",
-    "test": "truffle test --network mainnetfork",
-    "debug-test": "truffle test --debug --network mainnetfork"
+    "ganache": "node ./test/helpers/setup.js &",
+    "test-integration": "TEST_MODE=INTEGRATION npm run ganache && truffle test --network mainnet_fork ./test/integration/*.js",
+    "test-unit": "TEST_MODE=UNIT npm run ganache && truffle test --network development ./test/unit/*.js",
+    "debug-test": "truffle test --debug --network mainnet_fork"
   },
   "repository": {
     "type": "git",
@@ -27,5 +28,9 @@
     "@openzeppelin/contracts": "^4.5.0",
     "@openzeppelin/test-helpers": "^0.5.15",
     "@uniswap/v2-periphery": "^1.1.0-beta.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.1",
+    "ganache": "^7.2.0"
   }
 }

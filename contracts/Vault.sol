@@ -20,11 +20,13 @@ contract Vault is ERC20, Ownable {
   event Deposit(address _user, uint256 _underlying_amount, uint256 _shares);
   event Withdraw(address _user, uint256 _lp_amount, uint256 _shares);
   event Claim(uint256 rewards);
+  event StrategyUpdated(IStrategy newStrategy);
 
   constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
 
   function setStrategy(IStrategy newStrategy) onlyOwner() external {
     _strategy = newStrategy;
+    emit StrategyUpdated(newStrategy);
   }
 
   function strategy() external view returns (address) {
