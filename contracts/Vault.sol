@@ -9,11 +9,16 @@ import "./interfaces/ICurve3Pool.sol";
 import "./interfaces/ILiquidityGauge.sol";
 import "./interfaces/ICurveFiMinter.sol";
 import "./interfaces/IStrategy.sol";
+import "./interfaces/IPriceOracle.sol";
 
 contract Vault is ERC20, Ownable {
   using SafeERC20 for IERC20;
-  IStrategy private _strategy;
   IUniswapV2Router02 private constant _uniswapRouter = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+
+  IStrategy private _strategy;
+  IPriceOracle public _oracle;
+
+  uint256 public SLIPPAGE = 950;
 
   event Deposit(address _user, uint256 _underlying_amount, uint256 _shares);
   event Withdraw(address _user, uint256 _lp_amount, uint256 _shares);
@@ -21,6 +26,14 @@ contract Vault is ERC20, Ownable {
   event StrategyUpdated(IStrategy newStrategy);
 
   constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
+
+  function setOracle(IPriceOracle newOracle) onlyOwner() external {
+    _oracle = newOracle;
+  }
+
+  function oracle() external view returns (address) {
+    return address(_oracle);
+  }  
 
   function setStrategy(IStrategy newStrategy) onlyOwner() external {
     _strategy = newStrategy;
@@ -70,19 +83,16 @@ contract Vault is ERC20, Ownable {
   /** claims the accumulated CRV rewards from Curve and converts them to DAI */
   function harvest() external {
     IERC20 _asset = asset();
-
     uint256 initialBalance = assetBalance();
 
     _strategy.claim();
     convertCRVToAsset(_asset);
 
     uint256 newBalanceAfterRewards = assetBalance();
+    assert(newBalanceAfterRewards > initialBalance);
 
     SafeERC20.safeTransfer(_asset, address(_strategy), assetBalance());
-
     emit Claim(newBalanceAfterRewards - initialBalance);
-
-    // Reinvest
     _strategy.invest();
   }
 
@@ -94,13 +104,16 @@ contract Vault is ERC20, Ownable {
     path[0] = address(crvToken);
     path[1] = address(_asset);
 
-    // We have to replace this with a proper oracle
-    uint256 minAmount = _uniswapRouter.getAmountsOut(crvAmount, path)[1];
+    uint256 crvPrice = _oracle.getPrice(address(crvToken));
+    uint256 assetPrice = _oracle.getPrice(address(_asset));
+
+    uint256 minimumAmount = (crvPrice * crvAmount) / assetPrice;
+    uint256 minimumAmountAfterSlippage = (minimumAmount * SLIPPAGE) / 1000;
 
     SafeERC20.safeIncreaseAllowance(crvToken, address(_uniswapRouter), crvAmount);
     _uniswapRouter.swapExactTokensForTokens(
       crvAmount,
-      minAmount,
+      minimumAmountAfterSlippage,
       path,
       address(this),
       block.timestamp
