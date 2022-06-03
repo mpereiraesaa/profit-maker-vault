@@ -18,5 +18,4 @@ const PORT = 7545;
 server.listen(PORT, async err => {
   if (err) throw err;
   console.log(`Ganache listening on port ${PORT}...`);
-  // const provider = server.provider;
 });

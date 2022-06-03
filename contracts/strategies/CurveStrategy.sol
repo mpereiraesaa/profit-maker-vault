@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.6;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../interfaces/ICurve3Pool.sol";
 import "../interfaces/ILiquidityGauge.sol";
 import "../interfaces/ICurveFiMinter.sol";
@@ -11,7 +10,6 @@ import "../interfaces/IStrategy.sol";
 
 contract CurveStrategy {
   using SafeERC20 for IERC20;
-  using SafeMath for uint;
   uint8 private immutable _ncoins;
   ERC20 public immutable _asset;
   ICurve3Pool private immutable _pool;
@@ -83,7 +81,7 @@ contract CurveStrategy {
 
     for (uint8 i = 0; i < _ncoins; i++){
       uint256 balance = _pool.balances(i);
-      amounts[i] = balance.mul(lpAmount).div(totalSupply);
+      amounts[i] = (balance * lpAmount) / totalSupply;
     }
     return amounts;
   }

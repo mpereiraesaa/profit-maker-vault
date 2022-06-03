@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.6;
+pragma solidity ^0.8.1;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "./interfaces/uniswap/IUniswapV2Router02.sol";
 import "./interfaces/ICurve3Pool.sol";
 import "./interfaces/ILiquidityGauge.sol";
 import "./interfaces/ICurveFiMinter.sol";
@@ -13,7 +12,6 @@ import "./interfaces/IStrategy.sol";
 
 contract Vault is ERC20, Ownable {
   using SafeERC20 for IERC20;
-  using SafeMath for uint;
   IStrategy private _strategy;
   IUniswapV2Router02 private constant _uniswapRouter = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
@@ -48,7 +46,7 @@ contract Vault is ERC20, Ownable {
     // the tokensToSend hook, so we need to transfer before we mint to keep the invariants.
     SafeERC20.safeTransferFrom(_asset, msg.sender, address(_strategy), amount);
 
-    uint256 mintAmount = amount.mul(underlyingUnit()).div(exchangeRate());
+    uint256 mintAmount = (amount * underlyingUnit()) / exchangeRate();
     _mint(msg.sender, mintAmount);
 
     _strategy.invest();
@@ -58,7 +56,7 @@ contract Vault is ERC20, Ownable {
   }
 
   function withdraw(uint256 lpAmount) public {
-    uint256 curveLpAmount = lpAmount.mul(exchangeRate()).div(underlyingUnit());
+    uint256 curveLpAmount = (lpAmount * exchangeRate()) / underlyingUnit();
 
     // if _asset is ERC777, transfer can call reenter AFTER the transfer happens through
     // the tokensReceived hook, so we need to transfer after we burn to keep the invariants.
@@ -82,7 +80,7 @@ contract Vault is ERC20, Ownable {
 
     SafeERC20.safeTransfer(_asset, address(_strategy), assetBalance());
 
-    emit Claim(newBalanceAfterRewards.sub(initialBalance));
+    emit Claim(newBalanceAfterRewards - initialBalance);
 
     // Reinvest
     _strategy.invest();
@@ -112,11 +110,11 @@ contract Vault is ERC20, Ownable {
   function exchangeRate() public view returns (uint256) {
     return totalSupply() == 0
       ? underlyingUnit()
-      : underlyingUnit().mul(totalBalance()).div(totalSupply());
+      : (underlyingUnit() * totalBalance()) / totalSupply();
   }
 
   function totalBalance() public view returns (uint256) {
-    return assetBalance().add(investedBalance());
+    return assetBalance() + investedBalance();
   }
 
   /*
